@@ -3,12 +3,26 @@
  */
 package web.crawler;
 
+import java.net.http.HttpClient;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
 public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
+
 
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        HttpClient httpClient = HttpClient.newHttpClient();
+        String base = "https://tretton37.com";
+        PageFetcher pageFetcher = new PageFetcher(httpClient, base);
+        PageSaver pageSaver = new PageSaver();
+        final CompletableFuture<Page> pageFuture = pageFetcher.fetchSingle("/");
+
+        pageFuture.thenAccept(page -> {
+            LinkFinder linkFinder = new LinkFinder(page.getContent());
+            final Set<String> links = linkFinder.relative().find();
+            System.out.println("links = " + links);
+            pageFetcher.fetch(links).thenAccept(pageSaver::save).join();
+        }).join();
+
     }
 }
