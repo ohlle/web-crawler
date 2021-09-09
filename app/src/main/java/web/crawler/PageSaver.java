@@ -12,7 +12,7 @@ public class PageSaver {
     private String tmpPath;
     public PageSaver() {
         try {
-            tmpPath = "file://" + Files.createTempDirectory("page-fetcher-").toAbsolutePath().toString();
+            tmpPath = "file://" + Files.createTempDirectory("page-fetcher-").toAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -20,20 +20,27 @@ public class PageSaver {
 
     public void save(List<Page> pages)  {
         for (Page page : pages) {
-            System.out.println("page.getUrl() in save = " + page.getUrl());
-            final Path path = Paths.get(URI.create(tmpPath + page.getUrl()));
-
-            if (path.toFile().exists()) { //Path already exists
-                continue;
-            }
-
-            byte[] strToBytes = page.getContent().getBytes();
+            final Path basePath = Paths.get(URI.create(tmpPath + page.getUrl()));
 
             try {
+                Files.createDirectories(basePath);
+
+                Path path = Paths.get(URI.create(tmpPath + page.getUrl() + "/index.html"));
+
+                if (path.toFile().exists()) { //File already exists
+                    continue;
+                }
+
+                byte[] strToBytes = page.getContent().getBytes();
+
                 Files.write(path, strToBytes);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    protected String getTmpPath() {
+        return tmpPath;
     }
 }
