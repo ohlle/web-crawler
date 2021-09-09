@@ -1,5 +1,7 @@
 package web.crawler;
 
+import org.apache.commons.text.StringEscapeUtils;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -18,14 +20,15 @@ public class PageSaver {
         }
     }
 
-    public void save(List<Page> pages)  {
+    public List<Page> save(List<Page> pages)  {
         for (Page page : pages) {
-            final Path basePath = Paths.get(URI.create(tmpPath + page.getUrl()));
+            final String pageUrl = StringEscapeUtils.escapeHtml4(page.getUrl());
+            final Path basePath = Paths.get(URI.create(tmpPath + pageUrl));
 
             try {
                 Files.createDirectories(basePath);
 
-                Path path = Paths.get(URI.create(tmpPath + page.getUrl() + "/index.html"));
+                Path path = Paths.get(URI.create(tmpPath + pageUrl + "/index.html"));
 
                 if (path.toFile().exists()) { //File already exists
                     continue;
@@ -34,10 +37,12 @@ public class PageSaver {
                 byte[] strToBytes = page.getContent().getBytes();
 
                 Files.write(path, strToBytes);
-            } catch (IOException e) {
+            } catch (Exception e) {
+                System.err.println(pageUrl);
                 e.printStackTrace();
             }
         }
+        return pages;
     }
 
     protected String getTmpPath() {

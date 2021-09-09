@@ -4,25 +4,57 @@
 package web.crawler;
 
 import java.net.http.HttpClient;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class App {
 
+    private final static Set<String> fetchedLinks = new HashSet<>();
 
     public static void main(String[] args) {
+        //Break out of static spaghetti
+        new App().run();
+    }
+
+    private PageFetcher pageFetcher;
+    private PageSaver pageSaver;
+
+    public void run() {
         HttpClient httpClient = HttpClient.newHttpClient();
         String base = "https://tretton37.com";
-        PageFetcher pageFetcher = new PageFetcher(httpClient, base);
-        PageSaver pageSaver = new PageSaver();
+        pageFetcher = new PageFetcher(httpClient, base);
+        pageSaver = new PageSaver();
+
         final CompletableFuture<Page> pageFuture = pageFetcher.fetchSingle("/");
+        pageFuture.thenAccept(this::findLinksAndFetch).join();
+    }
 
-        pageFuture.thenAccept(page -> {
-            LinkFinder linkFinder = new LinkFinder(page.getContent());
-            final Set<String> links = linkFinder.relative().find();
-            System.out.println("links = " + links);
-            pageFetcher.fetch(links).thenAccept(pageSaver::save).join();
-        }).join();
+    private void findLinksAndFetch(Page page) {
+        LinkFinder linkFinder = new LinkFinder(page);
+        final Set<String> links = filterLinks(linkFinder.relative().find());
+        pageFetcher.fetch(links)
+                .thenApply(this::addToFetchedLinks)
+                .thenApply(pageSaver::save)
+                .thenAccept(this::findLinksAndFetch).join();
+    }
 
+    private void findLinksAndFetch(List<Page> pages) {
+        for (Page page : pages) {
+            findLinksAndFetch(page);
+        }
+    }
+
+    private List<Page> addToFetchedLinks(List<Page> pages) {
+        for (Page page : pages) {
+            fetchedLinks.add(page.getUrl());
+        }
+        return pages;
+    }
+
+    private  Set<String> filterLinks(Set<String> links) {
+        return links.stream().filter(link -> !fetchedLinks.contains(link)).collect(Collectors.toSet());
     }
 }

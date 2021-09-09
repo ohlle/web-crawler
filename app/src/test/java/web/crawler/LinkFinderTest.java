@@ -18,7 +18,7 @@ public class LinkFinderTest {
     public void testGettingAllLinks() {
         Set<String> expected = new HashSet<>(Arrays.asList("/relative-path", "https://example.net/absolute"));
 
-        LinkFinder unitUnderTest = new LinkFinder(testData);
+        LinkFinder unitUnderTest = new LinkFinder(new Page("/", testData));
 
         final Set<String> actual = unitUnderTest.find();
 
@@ -30,7 +30,7 @@ public class LinkFinderTest {
     public void testGettingAllRelativeLinks() {
         Set<String> expected = Set.of("/relative-path");
 
-        LinkFinder unitUnderTest = new LinkFinder(testData);
+        LinkFinder unitUnderTest = new LinkFinder(new Page("/", testData));
 
         final Set<String> actual = unitUnderTest.relative().find();
 
@@ -42,7 +42,7 @@ public class LinkFinderTest {
     public void testGettingAllRelativeLinksCleaned() {
         Set<String> expected = Set.of("/relative-path");
 
-        LinkFinder unitUnderTest = new LinkFinder(testData2);
+        LinkFinder unitUnderTest = new LinkFinder(new Page("/", testData2));
 
         final Set<String> actual = unitUnderTest.relative().find();
 
