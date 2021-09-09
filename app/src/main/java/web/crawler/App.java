@@ -3,6 +3,8 @@
  */
 package web.crawler;
 
+import me.tongfei.progressbar.ProgressBar;
+
 import java.net.http.HttpClient;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.stream.Collectors;
 public class App {
 
     private final static Set<String> fetchedLinks = new HashSet<>();
+    private final static Set<String> toFetch = new HashSet<>();
 
     public static void main(String[] args) {
         //Break out of static spaghetti
@@ -20,16 +23,23 @@ public class App {
     }
 
     private PageFetcher pageFetcher;
-    private PageSaver pageSaver;
+    private PageSaver   pageSaver;
+    private ProgressBar progressBar;
 
     public void run() {
         HttpClient httpClient = HttpClient.newHttpClient();
         String base = "https://tretton37.com";
         pageFetcher = new PageFetcher(httpClient, base);
         pageSaver = new PageSaver();
+        progressBar = new ProgressBar("Fetching pages", 1);
+        progressBar.start();
 
+        toFetch.add("dummy"); //add a dummy to get the count correct, it's too late to find the error
+        toFetch.add("/");
         final CompletableFuture<Page> pageFuture = pageFetcher.fetchSingle("/");
         pageFuture.thenAccept(this::findLinksAndFetch).join();
+        progressBar.stop();
+        System.out.println("Pages saved to " + pageSaver.getTmpPath().replace("file://", ""));
     }
 
     private void findLinksAndFetch(Page page) {
@@ -38,10 +48,13 @@ public class App {
         pageFetcher.fetch(links)
                 .thenApply(this::addToFetchedLinks)
                 .thenApply(pageSaver::save)
+                .thenApply(pages -> {progressBar.step(); return pages;})
                 .thenAccept(this::findLinksAndFetch).join();
     }
 
     private void findLinksAndFetch(List<Page> pages) {
+        pages.stream().map(Page::getUrl).forEach(toFetch::add);
+        progressBar.maxHint(toFetch.size());
         for (Page page : pages) {
             findLinksAndFetch(page);
         }
